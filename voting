@@ -1,0 +1,87 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+void main() {
+  runApp(VotingApp());
+}
+
+// Events
+abstract class VoteEvent {}
+
+class Vote extends VoteEvent {
+  final String option;
+
+  Vote(this.option);
+}
+
+class ResetVotes extends VoteEvent {}
+
+// State
+class VoteState {
+  final Map<String, int> votes;
+
+  VoteState({required this.votes});
+}
+
+// Bloc
+class VoteBloc extends Bloc<VoteEvent, VoteState> {
+  VoteBloc()
+      : super(VoteState(votes: {
+          'Dart': 0,
+          'Python': 0,
+          'JavaScript': 0,
+          'C++': 0,
+        })) {
+    on<Vote>((event, emit) {
+      final updatedVotes = Map<String, int>.from(state.votes);
+      updatedVotes[event.option] = (updatedVotes[event.option] ?? 0) + 1;
+      emit(VoteState(votes: updatedVotes));
+    });
+
+    on<ResetVotes>((event, emit) {
+      final resetVotes = Map<String, int>.from(state.votes);
+      resetVotes.updateAll((key, value) => 0);
+      emit(VoteState(votes: resetVotes));
+    });
+  }
+}
+
+class VotingApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Voting Poll',
+      home: BlocProvider(
+        create: (_) => VoteBloc(),
+        child: VotingHomePage(),
+      ),
+    );
+  }
+}
+
+class VotingHomePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final voteBloc = BlocProvider.of<VoteBloc>(context);
+    return Scaffold(
+      appBar: AppBar(title: Text('Vote for Your Favorite Language')),
+      body: BlocBuilder<VoteBloc, VoteState>(
+        builder: (context, state) {
+          return ListView(
+            children: state.votes.entries.map((entry) {
+              return ListTile(
+                title: Text(entry.key),
+                trailing: Text(entry.value.toString()),
+                onTap: () => voteBloc.add(Vote(entry.key)),
+              );
+            }).toList(),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => voteBloc.add(ResetVotes()),
+        child: Icon(Icons.refresh),
+      ),
+    );
+  }
+}
