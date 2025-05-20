@@ -1,0 +1,132 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => NotesProvider(),
+      child: NotesApp(),
+    ),
+  );
+}
+
+class Note {
+  String title;
+  String description;
+
+  Note({required this.title, required this.description});
+}
+
+class NotesProvider extends ChangeNotifier {
+  final List<Note> _notes = [];
+
+  List<Note> get notes => _notes;
+
+  void addNote(Note note) {
+    _notes.add(note);
+    notifyListeners();
+  }
+
+  void updateNote(int index, Note note) {
+    _notes[index] = note;
+    notifyListeners();
+  }
+
+  void deleteNote(int index) {
+    _notes.removeAt(index);
+    notifyListeners();
+  }
+}
+
+class NotesApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Notes App',
+      home: NotesHomePage(),
+    );
+  }
+}
+
+class NotesHomePage extends StatelessWidget {
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+
+  void _showNoteDialog(BuildContext context, {Note? note, int? index}) {
+    if (note != null) {
+      _titleController.text = note.title;
+      _descriptionController.text = note.description;
+    } else {
+      _titleController.clear();
+      _descriptionController.clear();
+    }
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(note == null ? 'Add Note' : 'Edit Note'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _titleController,
+              decoration: InputDecoration(labelText: 'Title'),
+            ),
+            TextField(
+              controller: _descriptionController,
+              decoration: InputDecoration(labelText: 'Description'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              final String title = _titleController.text;
+              final String description = _descriptionController.text;
+              if (title.isNotEmpty && description.isNotEmpty) {
+                final newNote = Note(title: title, description: description);
+                if (note == null) {
+                  Provider.of<NotesProvider>(context, listen: false)
+                      .addNote(newNote);
+                } else if (index != null) {
+                  Provider.of<NotesProvider>(context, listen: false)
+                      .updateNote(index, newNote);
+                }
+                Navigator.of(context).pop();
+              }
+            },
+            child: Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final notesProvider = Provider.of<NotesProvider>(context);
+    return Scaffold(
+      appBar: AppBar(title: Text('Notes')),
+      body: ListView.builder(
+        itemCount: notesProvider.notes.length,
+        itemBuilder: (_, index) {
+          final note = notesProvider.notes[index];
+          return ListTile(
+            title: Text(note.title),
+            subtitle: Text(note.description),
+            onTap: () => _showNoteDialog(context, note: note, index: index),
+            trailing: IconButton(
+              icon: Icon(Icons.delete),
+              onPressed: () =>
+                  notesProvider.deleteNote(index),
+            ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showNoteDialog(context),
+        child: Icon(Icons.add),
+      ),
+    );
+  }
+}
